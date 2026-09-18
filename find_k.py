@@ -5,6 +5,10 @@ def predict_knn(dataset, x_new, k):
     # ตรวจสอบความถูกต้อง
     if len(dataset) == 0:
         raise ValueError("Dataset ต้องไม่เป็นค่าว่าง")
+    if not isinstance(k, int) or k <= 0:
+        raise ValueError("ค่า k ต้องมากกว่า 0")
+    if k > len(dataset):
+        raise ValueError(f"ค่า k ({k}) ต้องไม่มากกว่าจำนวนข้อมูลใน Dataset ({len(dataset)})")    
     
     # จุดอ้างอิง
     expected_dim = len(dataset[0][0])
@@ -19,15 +23,23 @@ def predict_knn(dataset, x_new, k):
         
         # ตรวจสอบว่าชื่อกลุ่ม
         if not isinstance(label, str) or label.strip() == "":
-            raise ValueError(f"Error: จุดที่ {index+1} ต้องมีชื่อกลุ่มแนบมาด้วยเสมอ")
+            raise ValueError(f"Error: จุดที่ {index+1} ไม้มีชื่อกลุ่มแนบ")
             
         # ตรวจสอบมิติเท่ากันไหม
         if len(point) != expected_dim:
-            raise ValueError(f"Error: จุดที่ {index+1} มีมิติไม่เท่ากับจุดอื่น (ต้องมี {expected_dim} มิติ)")
+            raise ValueError(f"Error: จุดที่ {index+1} มีมิติที่ไม่ถูกต้อง (ควรเป็น {expected_dim} มิติ)")
+
+        # พิกัดต้องเป็นตัวเลข
+        for val in point:
+            if not isinstance(val, (int, float)) or isinstance(val, bool):
+                raise ValueError(f"Error: จุดที่ {index+1} ไม่เป็นตัวเลข")
     
     # ตรวจสอบมิติเท่ากันไหม (ของอ้างอิง)
     if len(x_new) != expected_dim:
-        raise ValueError(f"Error: จุดพยากรณ์ต้องมี {expected_dim} มิติเท่ากับ Dataset")
+        raise ValueError(f"Error: จุดพยากรณ์ต้องมีมิติเท่ากับข้อมูลใน Dataset")
+    for val in x_new:
+        if not isinstance(val, (int, float)) or isinstance(val, bool):
+            raise ValueError("Error: จุดพยากรณ์มีค่าในพิกัดที่ไม่ใช่ตัวเลข")
 
     # คำนวณระยะห่าง
     distances = []
@@ -53,9 +65,17 @@ def predict_knn(dataset, x_new, k):
 
     # Majority Vote
     unique_labels, counts = np.unique(k_nearest_labels, return_counts=True)
-    max_count_index = np.argmax(counts)
-    prediction = unique_labels[max_count_index]
+    max_count = np.max(counts)
+    candidates = unique_labels[counts == max_count]
 
+    # ป้องกันกรณีคะแนนเท่ากัน
+    if len(candidates) == 1:
+        prediction = candidates[0]
+    else:
+        for label in k_nearest_labels:
+            if label in candidates:
+                prediction = label
+                break
     return prediction
 
 if __name__ == "__main__":
